@@ -2,7 +2,7 @@
 Welcome to a Spago project!
 You can edit this file as you like.
 -}
-{ name = "purescript-halogen-graphql-connect"
+{ name = "my-project"
 , dependencies =
   [ "argonaut"
   , "console"
@@ -14,5 +14,5 @@ You can edit this file as you like.
   , "remotedata"
   ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "test/**/*.purs" ]
+, sources = [ "src/**/*.purs", "../../src/**/*.purs", "test/**/*.purs" ]
 }

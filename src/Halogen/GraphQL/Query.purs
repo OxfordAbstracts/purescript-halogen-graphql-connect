@@ -159,7 +159,7 @@ queryConnectInternal sym decoder optsF queryName query client innerComponent =
       { pass } <- H.get
       let
         gqlProp = Record.get sym pass
-      H.modify_ _ { pass = Record.insert (SProxy :: _ sym) gqlProp input }
+      H.modify_ _ { pass = Record.insert sym gqlProp input }
     Emit output -> H.raise output
     Finalize -> do
       { subId } <- H.get
