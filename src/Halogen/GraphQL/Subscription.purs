@@ -22,7 +22,7 @@ import Prim.Row as Row
 import Record as Record
 
 type WithGql res r
-  = ( gql :: RemoteData GqlFailure res | r )
+  = ( subGql :: RemoteData GqlFailure res | r )
 
 data Action input output res
   = Initialize
@@ -33,12 +33,12 @@ data Action input output res
 
 _inner = SProxy :: SProxy "inner"
 
--- | Pass the result of a graphQL query to a component using the "gql" label
+-- | Pass the result of a graphQL query to a component using the "subGql" label
 subConnect ::
   forall querySchema mutationSchema subscriptionSchema query input output m res gqlQuery.
   MonadAff m =>
   GqlQuery subscriptionSchema gqlQuery res =>
-  Row.Lacks "gql" input =>
+  Row.Lacks "subGql" input =>
   (Json -> Either JsonDecodeError res) ->
   (QueryOpts -> QueryOpts) ->
   String ->
@@ -47,7 +47,7 @@ subConnect ::
   H.Component HH.HTML query { | (WithGql res input) } output m ->
   H.Component HH.HTML query { | input } output m
 subConnect decoder = 
-  subConnectInternal (SProxy :: _ "gql") (decodeGqlRes decoder)
+  subConnectInternal (SProxy :: _ "subGql") (decodeGqlRes decoder)
 
 -- | Pass the result of a graphQL query to a component using a custom label
 subConnect_ ::
@@ -68,12 +68,12 @@ subConnect_ ::
 subConnect_ sym decoder = 
   subConnectInternal sym (decodeGqlRes decoder)
 
--- | Pass the full graphQL result of a graphQL query to a component using the "gql" label
+-- | Pass the full graphQL result of a graphQL query to a component using the "subGql" label
 subConnectFullRes ::
   forall querySchema mutationSchema subscriptionSchema query input output m res gqlQuery.
   MonadAff m =>
   GqlQuery subscriptionSchema gqlQuery res =>
-  Row.Lacks "gql" input =>
+  Row.Lacks "subGql" input =>
   (Json -> Either JsonDecodeError res) ->
   (QueryOpts -> QueryOpts) ->
   String ->
@@ -82,7 +82,7 @@ subConnectFullRes ::
   H.Component HH.HTML query { | (WithGql (GqlRes res) input) } output m ->
   H.Component HH.HTML query { | input } output m
 subConnectFullRes decoder = 
-  subConnectInternal (SProxy :: _ "gql") (getFullRes decoder)
+  subConnectInternal (SProxy :: _ "subGql") (getFullRes decoder)
 
 -- | Pass the full graphQL result of a graphQL query to a component using a custom label
 subConnectFullRes_ ::
