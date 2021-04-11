@@ -1,3 +1,3 @@
-# purescript-halogen-graphql-hocs
+# purescript-halogen-graphql-connect
 
-Halogen higher order components to connect your app to your graphql client. 
+Make graphQL calls in your halogen project, using higher order components or hooks. 
