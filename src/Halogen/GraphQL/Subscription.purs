@@ -1,4 +1,4 @@
-module Halogen.GraphQL.Query (queryConnect, queryConnect_, queryConnectFullRes, queryConnectFullRes_) where
+module Halogen.GraphQL.Subscription (subConnect, subConnect_, subConnectFullRes, subConnectFullRes_) where
 
 import Prelude
 
@@ -8,11 +8,11 @@ import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (class IsSymbol, SProxy(..))
 import Effect.Aff.Class (class MonadAff)
-import GraphQL.Client.BaseClients.Apollo (ApolloClient, QueryOpts)
+import GraphQL.Client.BaseClients.Apollo (ApolloSubClient, QueryOpts)
 import GraphQL.Client.Query (decodeGqlRes, getFullRes)
 import GraphQL.Client.SafeQueryName (safeQueryName)
 import GraphQL.Client.ToGqlString (class GqlQueryString, toGqlQueryString)
-import GraphQL.Client.Types (class GqlQuery, class QueryClient, class WatchQueryClient, Client(..), GqlRes, clientWatchQuery, defQueryOpts)
+import GraphQL.Client.Types (class GqlQuery, class QueryClient, class SubscriptionClient, Client(..), GqlRes, clientSubscription, defSubOpts)
 import Halogen as H
 import Halogen.GraphQL.Error (GqlFailure(..))
 import Halogen.HTML as HH
@@ -34,26 +34,26 @@ data Action input output res
 _inner = SProxy :: SProxy "inner"
 
 -- | Pass the result of a graphQL query to a component using the "gql" label
-queryConnect ::
+subConnect ::
   forall querySchema mutationSchema subscriptionSchema query input output m res gqlQuery.
   MonadAff m =>
-  GqlQuery querySchema gqlQuery res =>
+  GqlQuery subscriptionSchema gqlQuery res =>
   Row.Lacks "gql" input =>
   (Json -> Either JsonDecodeError res) ->
   (QueryOpts -> QueryOpts) ->
   String ->
   ({ | input } -> m gqlQuery) ->
-  Client ApolloClient querySchema mutationSchema subscriptionSchema ->
+  Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
   H.Component HH.HTML query { | (WithGql res input) } output m ->
   H.Component HH.HTML query { | input } output m
-queryConnect decoder = 
-  queryConnectInternal (SProxy :: _ "gql") (decodeGqlRes decoder)
+subConnect decoder = 
+  subConnectInternal (SProxy :: _ "gql") (decodeGqlRes decoder)
 
 -- | Pass the result of a graphQL query to a component using a custom label
-queryConnect_ ::
+subConnect_ ::
   forall querySchema mutationSchema subscriptionSchema query input output m res gqlQuery withGql sym.
   MonadAff m =>
-  GqlQuery querySchema gqlQuery res =>
+  GqlQuery subscriptionSchema gqlQuery res =>
   Row.Lacks sym input =>
   IsSymbol sym =>
   Row.Cons sym (RemoteData GqlFailure res) input withGql =>
@@ -62,33 +62,33 @@ queryConnect_ ::
   (QueryOpts -> QueryOpts) ->
   String ->
   ({ | input } -> m gqlQuery) ->
-  Client ApolloClient querySchema mutationSchema subscriptionSchema ->
+  Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
   H.Component HH.HTML query { | withGql } output m ->
   H.Component HH.HTML query { | input } output m
-queryConnect_ sym decoder = 
-  queryConnectInternal sym (decodeGqlRes decoder)
+subConnect_ sym decoder = 
+  subConnectInternal sym (decodeGqlRes decoder)
 
 -- | Pass the full graphQL result of a graphQL query to a component using the "gql" label
-queryConnectFullRes ::
+subConnectFullRes ::
   forall querySchema mutationSchema subscriptionSchema query input output m res gqlQuery.
   MonadAff m =>
-  GqlQuery querySchema gqlQuery res =>
+  GqlQuery subscriptionSchema gqlQuery res =>
   Row.Lacks "gql" input =>
   (Json -> Either JsonDecodeError res) ->
   (QueryOpts -> QueryOpts) ->
   String ->
   ({ | input } -> m gqlQuery) ->
-  Client ApolloClient querySchema mutationSchema subscriptionSchema ->
+  Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
   H.Component HH.HTML query { | (WithGql (GqlRes res) input) } output m ->
   H.Component HH.HTML query { | input } output m
-queryConnectFullRes decoder = 
-  queryConnectInternal (SProxy :: _ "gql") (getFullRes decoder)
+subConnectFullRes decoder = 
+  subConnectInternal (SProxy :: _ "gql") (getFullRes decoder)
 
 -- | Pass the full graphQL result of a graphQL query to a component using a custom label
-queryConnectFullRes_ ::
+subConnectFullRes_ ::
   forall querySchema mutationSchema subscriptionSchema query input output m res gqlQuery withGql sym.
   MonadAff m =>
-  GqlQuery querySchema gqlQuery res =>
+  GqlQuery subscriptionSchema gqlQuery res =>
   Row.Lacks sym input =>
   IsSymbol sym =>
   Row.Cons sym (RemoteData GqlFailure (GqlRes res)) input withGql =>
@@ -97,16 +97,16 @@ queryConnectFullRes_ ::
   (QueryOpts -> QueryOpts) ->
   String ->
   ({ | input } -> m gqlQuery) ->
-  Client ApolloClient querySchema mutationSchema subscriptionSchema ->
+  Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
   H.Component HH.HTML query { | withGql } output m ->
   H.Component HH.HTML query { | input } output m
-queryConnectFullRes_ sym decoder = 
-  queryConnectInternal sym (getFullRes decoder)
+subConnectFullRes_ sym decoder = 
+  subConnectInternal sym (getFullRes decoder)
 
-queryConnectInternal ::
+subConnectInternal ::
   forall querySchema mutationSchema subscriptionSchema query input output m res res_ gqlQuery withGql sym.
   MonadAff m =>
-  GqlQuery querySchema gqlQuery res_ =>
+  GqlQuery subscriptionSchema gqlQuery res_ =>
   Row.Lacks sym input =>
   IsSymbol sym =>
   Row.Cons sym (RemoteData GqlFailure res) input withGql =>
@@ -115,15 +115,16 @@ queryConnectInternal ::
   (QueryOpts -> QueryOpts) ->
   String ->
   ({ | input } -> m gqlQuery) ->
-  Client ApolloClient querySchema mutationSchema subscriptionSchema ->
+  Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
   H.Component HH.HTML query { | withGql } output m ->
   H.Component HH.HTML query { | input } output m
-queryConnectInternal sym decoder optsF queryName query client innerComponent =
+subConnectInternal sym decoder optsF queryName query client innerComponent =
   H.mkComponent
     { initialState:
         \pass ->
           { pass: Record.insert sym Loading pass
           , subId: Nothing
+          , finalized: false
           }
     , render
     , eval:
@@ -141,7 +142,7 @@ queryConnectInternal sym decoder optsF queryName query client innerComponent =
     Initialize -> do
       { pass } <- H.get
       q <- H.lift $ query $ Record.delete sym pass
-      sub <- H.lift $ watchQueryEventSource decoder optsF queryName q client
+      sub <- H.lift $ subscriptionEventSource decoder optsF queryName q client
       subId <- H.subscribe $ map QueryUpdate sub
       H.modify_ _ { subId = Just subId }
     QueryUpdate (Right res) -> H.modify_ \st -> st { pass = Record.set sym (Success res) st.pass }
@@ -149,24 +150,28 @@ queryConnectInternal sym decoder optsF queryName query client innerComponent =
     Receive input -> do
       { pass } <- H.get
       let
-        gqlProp = Record.get sym pass
-      H.modify_ _ { pass = Record.insert (SProxy :: _ sym) gqlProp input }
+        subGql = Record.get sym pass
+      H.modify_ _ { pass = Record.insert sym subGql input }
     Emit output -> H.raise output
     Finalize -> do
-      { subId } <- H.get
+      { subId } <- H.modify _ { finalized = true }
       traverse_ H.unsubscribe subId
 
   handleQuery :: forall a. query a -> H.HalogenM _ _ _ _ _ (Maybe a)
   handleQuery = H.query _inner unit
 
-  render state = HH.slot _inner unit innerComponent state.pass (Just <<< Emit)
+  render state =
+    if state.finalized then 
+      HH.text "" 
+    else
+      HH.slot _inner unit innerComponent state.pass (Just <<< Emit)
 
-watchQueryEventSource ::
+subscriptionEventSource ::
   forall query m baseClient opts mOpts res ss ms querySchema.
   GqlQueryString query =>
   Applicative m =>
   MonadAff m =>
-  WatchQueryClient baseClient opts =>
+  SubscriptionClient baseClient opts =>
   QueryClient baseClient opts mOpts =>
   (Json -> Either JsonDecodeError res) ->
   (opts -> opts) ->
@@ -174,12 +179,12 @@ watchQueryEventSource ::
   query ->
   Client baseClient querySchema ms ss ->
   m (EventSource m (Either JsonDecodeError res))
-watchQueryEventSource decoder optsF queryNameUnsafe q (Client client) = do
+subscriptionEventSource decoder optsF queryNameUnsafe q (Client client) = do
   pure
     $ effectEventSource \emitter -> do
         cancel <-
-          clientWatchQuery
-            (optsF (defQueryOpts client))
+          clientSubscription
+            (optsF (defSubOpts client))
             client
             query
             (decoder >>> emit emitter)
@@ -187,4 +192,4 @@ watchQueryEventSource decoder optsF queryNameUnsafe q (Client client) = do
   where
   queryName = safeQueryName queryNameUnsafe
 
-  query = "query " <> queryName <> " " <> toGqlQueryString q
+  query = "subscription " <> queryName <> " " <> toGqlQueryString q
