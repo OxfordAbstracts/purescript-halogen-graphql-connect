@@ -5,7 +5,7 @@ import Prelude
 import Data.Argonaut (JsonDecodeError)
 import Data.Function (on)
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
+import Data.Show.Generic (genericShow)
 import Effect.Exception (Error)
 
 data GqlFailure

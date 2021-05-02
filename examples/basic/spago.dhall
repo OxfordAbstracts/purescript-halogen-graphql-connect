@@ -10,6 +10,7 @@ You can edit this file as you like.
   , "effect"
   , "graphql-client"
   , "halogen"
+  , "halogen-hooks"
   , "psci-support"
   , "remotedata"
   ]

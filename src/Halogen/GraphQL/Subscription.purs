@@ -6,20 +6,21 @@ import Data.Argonaut (Json, JsonDecodeError)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
-import Data.Symbol (class IsSymbol, SProxy(..))
+import Data.Symbol (class IsSymbol)
 import Effect.Aff.Class (class MonadAff)
 import GraphQL.Client.BaseClients.Apollo (ApolloSubClient, QueryOpts)
 import GraphQL.Client.Query (decodeGqlRes, getFullRes)
 import GraphQL.Client.SafeQueryName (safeQueryName)
 import GraphQL.Client.ToGqlString (class GqlQueryString, toGqlQueryString)
-import GraphQL.Client.Types (class GqlQuery, class QueryClient, class SubscriptionClient, Client(..), GqlRes, clientSubscription, defSubOpts)
+import GraphQL.Client.Types (class GqlQuery, class QueryClient, class SubscriptionClient, Client(..), GqlRes, subscriptionEventOpts)
 import Halogen as H
 import Halogen.GraphQL.Error (GqlFailure(..))
 import Halogen.HTML as HH
-import Halogen.Query.EventSource (EventSource, Finalizer(..), effectEventSource, emit)
+import Halogen.Subscription (Emitter)
 import Network.RemoteData (RemoteData(..))
 import Prim.Row as Row
 import Record as Record
+import Type.Proxy (Proxy(..))
 
 type WithGql res r
   = ( subGql :: RemoteData GqlFailure res | r )
@@ -31,7 +32,7 @@ data Action input output res
   | Receive input
   | Emit output
 
-_inner = SProxy :: SProxy "inner"
+_inner = Proxy :: Proxy "inner"
 
 -- | Pass the result of a graphQL query to a component using the "subGql" label
 subConnect ::
@@ -44,10 +45,10 @@ subConnect ::
   String ->
   ({ | input } -> m gqlQuery) ->
   Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
-  H.Component HH.HTML query { | (WithGql res input) } output m ->
-  H.Component HH.HTML query { | input } output m
+  H.Component query { | (WithGql res input) } output m ->
+  H.Component query { | input } output m
 subConnect decoder = 
-  subConnectInternal (SProxy :: _ "subGql") (decodeGqlRes decoder)
+  subConnectInternal (Proxy :: _ "subGql") (decodeGqlRes decoder)
 
 -- | Pass the result of a graphQL query to a component using a custom label
 subConnect_ ::
@@ -57,14 +58,14 @@ subConnect_ ::
   Row.Lacks sym input =>
   IsSymbol sym =>
   Row.Cons sym (RemoteData GqlFailure res) input withGql =>
-  SProxy sym ->
+  Proxy sym ->
   (Json -> Either JsonDecodeError res) ->
   (QueryOpts -> QueryOpts) ->
   String ->
   ({ | input } -> m gqlQuery) ->
   Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
-  H.Component HH.HTML query { | withGql } output m ->
-  H.Component HH.HTML query { | input } output m
+  H.Component query { | withGql } output m ->
+  H.Component query { | input } output m
 subConnect_ sym decoder = 
   subConnectInternal sym (decodeGqlRes decoder)
 
@@ -79,10 +80,10 @@ subConnectFullRes ::
   String ->
   ({ | input } -> m gqlQuery) ->
   Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
-  H.Component HH.HTML query { | (WithGql (GqlRes res) input) } output m ->
-  H.Component HH.HTML query { | input } output m
+  H.Component query { | (WithGql (GqlRes res) input) } output m ->
+  H.Component query { | input } output m
 subConnectFullRes decoder = 
-  subConnectInternal (SProxy :: _ "subGql") (getFullRes decoder)
+  subConnectInternal (Proxy :: _ "subGql") (getFullRes decoder)
 
 -- | Pass the full graphQL result of a graphQL query to a component using a custom label
 subConnectFullRes_ ::
@@ -92,14 +93,14 @@ subConnectFullRes_ ::
   Row.Lacks sym input =>
   IsSymbol sym =>
   Row.Cons sym (RemoteData GqlFailure (GqlRes res)) input withGql =>
-  SProxy sym ->
+  Proxy sym ->
   (Json -> Either JsonDecodeError res) ->
   (QueryOpts -> QueryOpts) ->
   String ->
   ({ | input } -> m gqlQuery) ->
   Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
-  H.Component HH.HTML query { | withGql } output m ->
-  H.Component HH.HTML query { | input } output m
+  H.Component query { | withGql } output m ->
+  H.Component query { | input } output m
 subConnectFullRes_ sym decoder = 
   subConnectInternal sym (getFullRes decoder)
 
@@ -110,19 +111,19 @@ subConnectInternal ::
   Row.Lacks sym input =>
   IsSymbol sym =>
   Row.Cons sym (RemoteData GqlFailure res) input withGql =>
-  SProxy sym ->
+  Proxy sym ->
   (Json -> Either JsonDecodeError res) ->
   (QueryOpts -> QueryOpts) ->
   String ->
   ({ | input } -> m gqlQuery) ->
   Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
-  H.Component HH.HTML query { | withGql } output m ->
-  H.Component HH.HTML query { | input } output m
+  H.Component query { | withGql } output m ->
+  H.Component query { | input } output m
 subConnectInternal sym decoder optsF queryName query client innerComponent =
   H.mkComponent
     { initialState:
         \pass ->
-          { pass: Record.insert sym Loading pass
+          { pass: Record.insert (Proxy :: _ sym) Loading pass
           , subId: Nothing
           , finalized: false
           }
@@ -142,7 +143,7 @@ subConnectInternal sym decoder optsF queryName query client innerComponent =
     Initialize -> do
       { pass } <- H.get
       q <- H.lift $ query $ Record.delete sym pass
-      sub <- H.lift $ subscriptionEventSource decoder optsF queryName q client
+      sub <- H.lift $ subscriptionInternal decoder optsF queryName q client
       subId <- H.subscribe $ map QueryUpdate sub
       H.modify_ _ { subId = Just subId }
     QueryUpdate (Right res) -> H.modify_ \st -> st { pass = Record.set sym (Success res) st.pass }
@@ -157,6 +158,7 @@ subConnectInternal sym decoder optsF queryName query client innerComponent =
       { subId } <- H.modify _ { finalized = true }
       traverse_ H.unsubscribe subId
 
+
   handleQuery :: forall a. query a -> H.HalogenM _ _ _ _ _ (Maybe a)
   handleQuery = H.query _inner unit
 
@@ -164,9 +166,9 @@ subConnectInternal sym decoder optsF queryName query client innerComponent =
     if state.finalized then 
       HH.text "" 
     else
-      HH.slot _inner unit innerComponent state.pass (Just <<< Emit)
+      HH.slot _inner unit innerComponent state.pass Emit
 
-subscriptionEventSource ::
+subscriptionInternal ::
   forall query m baseClient opts mOpts res ss ms querySchema.
   GqlQueryString query =>
   Applicative m =>
@@ -178,18 +180,10 @@ subscriptionEventSource ::
   String ->
   query ->
   Client baseClient querySchema ms ss ->
-  m (EventSource m (Either JsonDecodeError res))
-subscriptionEventSource decoder optsF queryNameUnsafe q (Client client) = do
-  pure
-    $ effectEventSource \emitter -> do
-        cancel <-
-          clientSubscription
-            (optsF (defSubOpts client))
-            client
-            query
-            (decoder >>> emit emitter)
-        pure $ Finalizer cancel
+  m (Emitter (Either JsonDecodeError res))
+subscriptionInternal decoder optsF queryNameUnsafe q (Client client) = do
+  pure $ (decodeGqlRes decoder) <$> subscriptionEventOpts optsF client queryStr
   where
   queryName = safeQueryName queryNameUnsafe
 
-  query = "subscription " <> queryName <> " " <> toGqlQueryString q
+  queryStr = "subscription " <> queryName <> " " <> toGqlQueryString q

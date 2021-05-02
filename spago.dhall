@@ -4,13 +4,19 @@ You can edit this file as you like.
 -}
 { name = "purescript-halogen-graphql-connect"
 , dependencies =
-  [ "argonaut"
+  [ "aff"
+  , "argonaut"
   , "console"
-  , "debug"
   , "effect"
+  , "either"
+  , "exceptions"
+  , "foldable-traversable"
   , "graphql-client"
   , "halogen"
+  , "maybe"
+  , "prelude"
   , "psci-support"
+  , "record"
   , "remotedata"
   ]
 , packages = ./packages.dhall
