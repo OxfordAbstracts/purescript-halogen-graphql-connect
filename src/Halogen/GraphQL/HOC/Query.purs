@@ -172,10 +172,9 @@ queryConnectInternal sym decoder optsF queryName query client innerComponent =
   render state = HH.slot _inner unit innerComponent state.pass Emit
 
 watchQueryEmitter ::
-  forall query baseClient opts mOpts res ss ms querySchema.
+  forall query baseClient opts res ss ms querySchema.
   GqlQueryString query =>
   WatchQueryClient baseClient opts =>
-  QueryClient baseClient opts mOpts =>
   (Json -> Either JsonDecodeError res) ->
   (opts -> opts) ->
   String ->

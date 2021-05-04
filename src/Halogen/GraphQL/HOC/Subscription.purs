@@ -1,4 +1,4 @@
-module Halogen.GraphQL.HOC.Subscription (subConnect, subConnect_, subConnectFullRes, subConnectFullRes_) where
+module Halogen.GraphQL.HOC.Subscription (subConnect, subConnect_, subConnectFullRes, subConnectFullRes_, subscriptionEmitter) where
 
 import Prelude
 
@@ -12,7 +12,7 @@ import GraphQL.Client.BaseClients.Apollo (ApolloSubClient, QueryOpts)
 import GraphQL.Client.Query (decodeGqlRes, getFullRes)
 import GraphQL.Client.SafeQueryName (safeQueryName)
 import GraphQL.Client.ToGqlString (class GqlQueryString, toGqlQueryString)
-import GraphQL.Client.Types (class GqlQuery, class QueryClient, class SubscriptionClient, Client(..), GqlRes, subscriptionEventOpts)
+import GraphQL.Client.Types (class GqlQuery, class SubscriptionClient, Client(..), GqlRes, subscriptionEventOpts)
 import Halogen as H
 import Halogen.GraphQL.Error (GqlFailure(..))
 import Halogen.HTML as HH
@@ -143,7 +143,7 @@ subConnectInternal sym decoder optsF queryName query client innerComponent =
     Initialize -> do
       { pass } <- H.get
       q <- H.lift $ query $ Record.delete sym pass
-      let sub = subscriptionInternal decoder optsF queryName q client
+      let sub = subscriptionEmitter decoder optsF queryName q client
       subId <- H.subscribe $ map QueryUpdate sub
       H.modify_ _ { subId = Just subId }
     QueryUpdate (Right res) -> H.modify_ \st -> st { pass = Record.set sym (Success res) st.pass }
@@ -168,18 +168,17 @@ subConnectInternal sym decoder optsF queryName query client innerComponent =
     else
       HH.slot _inner unit innerComponent state.pass Emit
 
-subscriptionInternal ::
-  forall query baseClient opts mOpts res ss ms querySchema.
+subscriptionEmitter ::
+  forall query baseClient opts res ss ms querySchema.
   GqlQueryString query =>
   SubscriptionClient baseClient opts =>
-  QueryClient baseClient opts mOpts =>
   (Json -> Either JsonDecodeError res) ->
   (opts -> opts) ->
   String ->
   query ->
   Client baseClient querySchema ms ss ->
   Emitter (Either JsonDecodeError res)
-subscriptionInternal decoder optsF queryNameUnsafe q (Client client) = do
+subscriptionEmitter decoder optsF queryNameUnsafe q (Client client) = do
   decodeGqlRes decoder <$> subscriptionEventOpts optsF client queryStr
   where
   queryName = safeQueryName queryNameUnsafe

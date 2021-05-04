@@ -1,4 +1,4 @@
-module Halogen.GraphQL.Hooks.Query (UseQuery, useQuery) where
+module Halogen.GraphQL.Hooks.Subscription (UseSubscription, useSubscription) where
 
 import Prelude
 
@@ -9,35 +9,34 @@ import Data.Maybe (Maybe(..))
 import Data.Tuple.Nested ((/\))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (liftEffect)
-import GraphQL.Client.BaseClients.Apollo (QueryOpts)
-import GraphQL.Client.Types (class GqlQuery, class WatchQueryClient, Client)
+import GraphQL.Client.BaseClients.Apollo (ApolloSubClient, QueryOpts)
+import GraphQL.Client.Types (class GqlQuery, Client)
 import Halogen.GraphQL.Error (GqlFailure(..))
 import Halogen.GraphQL.GqlRemote (GqlRemote)
-import Halogen.GraphQL.HOC.Query (watchQueryEmitter)
+import Halogen.GraphQL.HOC.Subscription (subscriptionEmitter)
 import Halogen.Hooks (type (<>), Hook, UseEffect, UseState)
 import Halogen.Hooks as Hooks
 import Halogen.Subscription as HS
 import Network.RemoteData (RemoteData(..))
 
-type UseQuery res
+type UseSubscription res
   = UseState (GqlRemote res) <> UseEffect <> Hooks.Pure
 
-useQuery ::
-  forall client query m res qSchema mSchema sSchema.
-  WatchQueryClient client QueryOpts =>
+useSubscription ::
+  forall query m res qSchema mSchema sSchema.
   MonadAff m =>
-  GqlQuery qSchema query res =>
+  GqlQuery sSchema query res =>
   (Json -> Either JsonDecodeError res) ->
   (QueryOpts -> QueryOpts) ->
   String ->
   query ->
-  Client client qSchema mSchema sSchema ->
-  Hook m (UseQuery res) (GqlRemote res)
-useQuery decoder opts queryName query client = Hooks.do
+  Client ApolloSubClient qSchema mSchema sSchema ->
+  Hook m (UseSubscription res) (GqlRemote res)
+useSubscription decoder opts queryName query client = Hooks.do
   result /\ resultId <- Hooks.useState Loading
   Hooks.useLifecycleEffect do
     let
-      emitter = watchQueryEmitter decoder opts queryName query client
+      emitter = subscriptionEmitter decoder opts queryName query client
     subscription <-
       liftEffect $ HS.subscribe emitter
         $ \res ->
