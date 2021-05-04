@@ -1,6 +1,7 @@
-module Halogen.GraphQL.Hooks.Query (UseQuery, GqlRemote, useQuery) where
+module Halogen.GraphQL.Hooks.Query (UseQuery, useQuery) where
 
 import Prelude
+
 import Control.Monad.Trans.Class (lift)
 import Data.Argonaut (Json, JsonDecodeError)
 import Data.Either (Either, either)
@@ -11,6 +12,7 @@ import Effect.Class (liftEffect)
 import GraphQL.Client.BaseClients.Apollo (ApolloClient, QueryOpts)
 import GraphQL.Client.Types (class GqlQuery, Client)
 import Halogen.GraphQL.Error (GqlFailure(..))
+import Halogen.GraphQL.GqlRemote (GqlRemote)
 import Halogen.GraphQL.HOC.Query (watchQueryEmitter)
 import Halogen.Hooks (type (<>), Hook, UseEffect, UseState)
 import Halogen.Hooks as Hooks
@@ -19,9 +21,6 @@ import Network.RemoteData (RemoteData(..))
 
 type UseQuery res
   = UseState (GqlRemote res) <> UseEffect <> Hooks.Pure
-
-type GqlRemote res
-  = RemoteData GqlFailure res
 
 useQuery ::
   forall query m res qSchema mSchema sSchema.
