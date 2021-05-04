@@ -32,6 +32,7 @@ module.exports = (onListening) => {
   ]
 
   const app = express()
+  
   app.use(cors())
 
   app.use('/graphql', graphqlHTTP({

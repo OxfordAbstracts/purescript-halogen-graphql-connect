@@ -1,4 +1,4 @@
-module Halogen.GraphQL.Hooks.Query (UseMutation, useMutation) where
+module Halogen.GraphQL.Hooks.Mutation (UseMutation, useMutation) where
 
 import Prelude
 
