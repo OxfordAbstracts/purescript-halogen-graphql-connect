@@ -143,7 +143,7 @@ subConnectInternal sym decoder optsF queryName query client innerComponent =
     Initialize -> do
       { pass } <- H.get
       q <- H.lift $ query $ Record.delete sym pass
-      sub <- H.lift $ subscriptionInternal decoder optsF queryName q client
+      let sub = subscriptionInternal decoder optsF queryName q client
       subId <- H.subscribe $ map QueryUpdate sub
       H.modify_ _ { subId = Just subId }
     QueryUpdate (Right res) -> H.modify_ \st -> st { pass = Record.set sym (Success res) st.pass }
@@ -169,10 +169,8 @@ subConnectInternal sym decoder optsF queryName query client innerComponent =
       HH.slot _inner unit innerComponent state.pass Emit
 
 subscriptionInternal ::
-  forall query m baseClient opts mOpts res ss ms querySchema.
+  forall query baseClient opts mOpts res ss ms querySchema.
   GqlQueryString query =>
-  Applicative m =>
-  MonadAff m =>
   SubscriptionClient baseClient opts =>
   QueryClient baseClient opts mOpts =>
   (Json -> Either JsonDecodeError res) ->
@@ -180,9 +178,9 @@ subscriptionInternal ::
   String ->
   query ->
   Client baseClient querySchema ms ss ->
-  m (Emitter (Either JsonDecodeError res))
+  Emitter (Either JsonDecodeError res)
 subscriptionInternal decoder optsF queryNameUnsafe q (Client client) = do
-  pure $ (decodeGqlRes decoder) <$> subscriptionEventOpts optsF client queryStr
+  decodeGqlRes decoder <$> subscriptionEventOpts optsF client queryStr
   where
   queryName = safeQueryName queryNameUnsafe
 

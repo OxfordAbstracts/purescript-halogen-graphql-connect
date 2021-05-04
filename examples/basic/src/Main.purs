@@ -1,9 +1,9 @@
 module Main where
 
 import Prelude
+
 import Data.Argonaut (class DecodeJson, decodeJson)
 import Data.Maybe (Maybe(..))
-import Data.Symbol (SProxy(..))
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import GraphQL.Client.Args (type (==>), (=>>))
@@ -13,11 +13,12 @@ import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.GraphQL.Error (GqlFailure)
-import Halogen.GraphQL.Query (queryConnect)
+import Halogen.GraphQL.HOC.Query (queryConnect)
 import Halogen.HTML as HH
 import Halogen.VDom.Driver (runUI)
 import Network.RemoteData (RemoteData)
 import Prim.Row as Row
+import Type.Proxy (Proxy(..))
 
 main :: Effect Unit
 main =
@@ -38,7 +39,7 @@ component ::
   forall q o m.
   MonadAff m =>
   Client ApolloClient Schema Void Void ->
-  H.Component HH.HTML q {} o m
+  H.Component q {} o m
 component client =
   myQueryConnect "get_widgets" gqlQuery client
     $ H.mkComponent
@@ -74,13 +75,13 @@ myQueryConnect ::
   String ->
   (Record st -> m query) ->
   Client ApolloClient Schema Void Void ->
-  H.Component HH.HTML q
+  H.Component q
     { gql :: RemoteData GqlFailure res
     | st
     }
     o
     m ->
-  H.Component HH.HTML q { | st } o m
+  H.Component q { | st } o m
 myQueryConnect = queryConnect decodeJson identity
 
 -- Component types
@@ -119,8 +120,8 @@ type Widget
     }
 
 -- Symbols 
-prop :: SProxy "prop"
-prop = SProxy
+prop :: Proxy "prop"
+prop = Proxy
 
-name :: SProxy "name"
-name = SProxy
+name :: Proxy "name"
+name = Proxy

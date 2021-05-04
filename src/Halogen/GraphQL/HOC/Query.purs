@@ -1,4 +1,4 @@
-module Halogen.GraphQL.HOC.Query (queryConnect, queryConnect_, queryConnectFullRes, queryConnectFullRes_) where
+module Halogen.GraphQL.HOC.Query (queryConnect, queryConnect_, queryConnectFullRes, queryConnectFullRes_, watchQueryEmitter) where
 
 import Prelude
 
@@ -151,7 +151,7 @@ queryConnectInternal sym decoder optsF queryName query client innerComponent =
     Initialize -> do
       { pass } <- H.get
       q <- H.lift $ query $ Record.delete sym pass
-      sub <- H.lift $ watchQueryEventSource decoder optsF queryName q client
+      let sub = watchQueryEmitter decoder optsF queryName q client
       subId <- H.subscribe $ map QueryUpdate sub
       H.modify_ _ { subId = Just subId }
     QueryUpdate (Right res) -> H.modify_ \st -> st { pass = Record.set sym (Success res) st.pass }
@@ -171,11 +171,9 @@ queryConnectInternal sym decoder optsF queryName query client innerComponent =
 
   render state = HH.slot _inner unit innerComponent state.pass Emit
 
-watchQueryEventSource ::
-  forall query m baseClient opts mOpts res ss ms querySchema.
+watchQueryEmitter ::
+  forall query baseClient opts mOpts res ss ms querySchema.
   GqlQueryString query =>
-  Applicative m =>
-  MonadAff m =>
   WatchQueryClient baseClient opts =>
   QueryClient baseClient opts mOpts =>
   (Json -> Either JsonDecodeError res) ->
@@ -183,9 +181,9 @@ watchQueryEventSource ::
   String ->
   query ->
   Client baseClient querySchema ms ss ->
-  m (Emitter (Either JsonDecodeError res))
-watchQueryEventSource decoder optsF queryNameUnsafe q (Client client) = do
-  pure $ (decodeGqlRes decoder) <$> watchQueryEventOpts optsF client query
+  Emitter (Either JsonDecodeError res)
+watchQueryEmitter decoder optsF queryNameUnsafe q (Client client) = do
+  decodeGqlRes decoder <$> watchQueryEventOpts optsF client query
   where
   queryName = safeQueryName queryNameUnsafe
 

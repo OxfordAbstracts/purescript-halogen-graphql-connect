@@ -9,10 +9,8 @@ import Data.Show.Generic (genericShow)
 import Effect.Exception (Error)
 
 data GqlFailure
-  = NotAuthenticated
-  | QueryError Error
+  = QueryError Error
   | DecodeError JsonDecodeError
-  | ResourceNotFound
 
 derive instance genericGqlFailure :: Generic GqlFailure _
 

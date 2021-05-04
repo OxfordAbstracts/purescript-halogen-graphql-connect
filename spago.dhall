@@ -13,11 +13,14 @@ You can edit this file as you like.
   , "foldable-traversable"
   , "graphql-client"
   , "halogen"
+  , "halogen-hooks"
+  , "halogen-subscriptions"
   , "maybe"
   , "prelude"
   , "psci-support"
   , "record"
   , "remotedata"
+  , "tuples"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
