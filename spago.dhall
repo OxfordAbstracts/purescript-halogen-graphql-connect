@@ -7,6 +7,7 @@ You can edit this file as you like.
   [ "aff"
   , "argonaut"
   , "console"
+  , "debug"
   , "effect"
   , "either"
   , "exceptions"
@@ -20,6 +21,7 @@ You can edit this file as you like.
   , "psci-support"
   , "record"
   , "remotedata"
+  , "transformers"
   , "tuples"
   ]
 , packages = ./packages.dhall

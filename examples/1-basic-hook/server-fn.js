@@ -1,7 +1,8 @@
 
 const widgets = [
   { id: 1, name: 'one', colour: 'RED' },
-  { id: 2, name: 'two', colour: 'GREEN' }
+  { id: 2, name: 'two', colour: 'GREEN' },
+  { id: 3, name: 'two', colour: 'GREEN' },
 ]
 
 module.exports = (onListening) => {
@@ -36,8 +37,8 @@ module.exports = (onListening) => {
 
   const root = {
     prop: () => 'Hello world!',
-    widgets: ({ id }) =>
-      widgets.filter(w => !id || id === w.id),
+    widgets: ({ id, colour }) =>
+      widgets.filter(w => (!id || id === w.id) && (!colour)),
     set_widget_colour: ({ id, colour }) => {
       let count = 0
       widgets.forEach((w) => {
