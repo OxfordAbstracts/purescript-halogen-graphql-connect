@@ -1,8 +1,7 @@
 
 const widgets = [
-  { id: 1, name: 'one', colour: 'RED' },
-  { id: 2, name: 'two', colour: 'GREEN' },
-  { id: 3, name: 'two', colour: 'GREEN' },
+  { id: 1, name: 'widget one', colour: 'RED' },
+  { id: 2, name: 'widget two', colour: 'GREEN' },
 ]
 
 module.exports = (onListening) => {
