@@ -9,3 +9,5 @@
 /.psa*
 /.spago
 /.parcel-cache
+
+dev/bundle.js

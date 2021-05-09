@@ -1,4 +1,4 @@
-module Halogen.GraphQL.Hooks.Query (UseQuery, useQuery) where
+module Halogen.GraphQL.Hooks.Query (GqlQueryHook, UseQuery, useQuery) where
 
 import Prelude
 import Data.Argonaut (Json, JsonDecodeError)
@@ -17,6 +17,8 @@ import Network.RemoteData (RemoteData(..))
 type UseQuery res
   = UseState (GqlRemote res) <> UseEffect <> Hooks.Pure
 
+type GqlQueryHook m res = Hook m (UseQuery res) (GqlRemote res)
+
 useQuery ::
   forall client query m res qSchema mSchema sSchema opts.
   WatchQueryClient client opts =>
@@ -27,7 +29,7 @@ useQuery ::
   String ->
   query ->
   Client client qSchema mSchema sSchema ->
-  Hook m (UseQuery res) (GqlRemote res)
+  GqlQueryHook m res
 useQuery decoder opts queryName query client = Hooks.do
   result /\ resultId <- Hooks.useState NotAsked
   Hooks.useLifecycleEffect do

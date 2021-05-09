@@ -12,11 +12,9 @@ import GraphQL.Client.BaseClients.Apollo (ApolloClient, createClient)
 import GraphQL.Client.Types (class GqlQuery, Client)
 import Halogen (Component, liftEffect)
 import Halogen.Aff as HA
-import Halogen.GraphQL.GqlRemote (GqlRemote)
-import Halogen.GraphQL.Hooks.Query (UseQuery)
+import Halogen.GraphQL.Hooks.Query (GqlQueryHook)
 import Halogen.GraphQL.Hooks.Query as GqlHook
 import Halogen.HTML as HH
-import Halogen.Hooks (Hook)
 import Halogen.Hooks as Hooks
 import Halogen.VDom.Driver (runUI)
 import Network.RemoteData (RemoteData(..))
@@ -43,18 +41,22 @@ app client =
         # query "get_widgets"
             { widgets: { id: 1 } =>> { name }
             }
+
     Hooks.pure do
-      case res of
-        Success { widgets } -> HH.p_ $ map (HH.text <<< _.name) widgets
-        Failure err -> HH.text $ show err
-        _ -> HH.text "Loading"
+      HH.div_ 
+        [ HH.div_ [ HH.text "Query result:" ]
+        , case res of
+            Success { widgets } -> HH.p_ $ map (HH.text <<< _.name) widgets
+            Failure err -> HH.text $ show err
+            _ -> HH.text "Loading"
+        ]
 
 query ::
   forall m query res.
   MonadAff m =>
   DecodeJson res =>
   GqlQuery Schema query res =>
-  String -> query -> GqlClient -> Hook m (UseQuery res) (GqlRemote res)
+  String -> query -> GqlClient -> GqlQueryHook m res
 query = GqlHook.useQuery decodeJson identity
 
 type GqlClient

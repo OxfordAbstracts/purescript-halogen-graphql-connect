@@ -37,7 +37,7 @@ module.exports = (onListening) => {
   const root = {
     prop: () => 'Hello world!',
     widgets: ({ id, colour }) =>
-      widgets.filter(w => (!id || id === w.id) && (!colour)),
+      widgets.filter(w => (!id || id === w.id)),
     set_widget_colour: ({ id, colour }) => {
       let count = 0
       widgets.forEach((w) => {
