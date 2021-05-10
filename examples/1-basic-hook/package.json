@@ -9,14 +9,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "spago build && node server & npm run build ",
-    "parcel": "parcel dev/index.html --open",
     "build": "esbuild entry.js --servedir=dev --outdir=dev/js --bundle"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "esbuild": "^0.11.20",
-    "parcel": "^2.0.0-beta.2"
+    "esbuild": "^0.11.20"
   },
   "dependencies": {
     "@apollo/client": "^3.3.14",

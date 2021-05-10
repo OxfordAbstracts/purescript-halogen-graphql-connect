@@ -1,7 +1,6 @@
 module Main where
 
 import Prelude
-
 import Data.Argonaut (class DecodeJson, decodeJson)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
@@ -41,9 +40,8 @@ app client =
         # query "get_widgets"
             { widgets: { id: 1 } =>> { name }
             }
-
     Hooks.pure do
-      HH.div_ 
+      HH.div_
         [ HH.div_ [ HH.text "Query result:" ]
         , case res of
             Success { widgets } -> HH.p_ $ map (HH.text <<< _.name) widgets
@@ -59,6 +57,7 @@ query ::
   String -> query -> GqlClient -> GqlQueryHook m res
 query = GqlHook.useQuery decodeJson identity
 
+-- Client type
 type GqlClient
   = Client ApolloClient Schema Void Void
 

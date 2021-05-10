@@ -32,11 +32,11 @@ useMutation ::
   Hook m (UseMutation res) (GqlRemote res)
 useMutation decoder optsF queryNameUnsafe query (Client client) = Hooks.do
   result /\ resultId <- Hooks.useState Loading
+  
 
-  Hooks.useLifecycleEffect do
-    json <- liftAff $ clientMutation opts client queryName $ toGqlQueryString query
-    Hooks.put resultId $ either (Failure <<< DecodeError) pure (decoder json)
-    pure Nothing
+  json <- ?liftAff $ clientMutation opts client queryName $ toGqlQueryString query
+  -- ?d $ Hooks.put resultId $ either (Failure <<< DecodeError) pure (decoder json)
+
 
   Hooks.pure result
 
