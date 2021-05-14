@@ -78,7 +78,7 @@ queryConnectFullRes ::
   MonadAff m =>
   GqlQuery querySchema gqlQuery res =>
   Row.Lacks "gql" input =>
-    QueryClient baseClient opts mOpts =>
+  QueryClient baseClient opts mOpts =>
   WatchQueryClient baseClient opts =>
   (Json -> Either JsonDecodeError res) ->
   (opts -> opts) ->

@@ -22,11 +22,10 @@ type UseQuery res
 
 type GqlQueryHook m res = Hook m (UseQuery res) (GqlRemote res)
 
--- Run a graphql query on component initialization, re-emitting when local cache updates
+-- | Run a graphql query on component initialization, re-emitting when local cache updates
 useQuery ::
   forall client query m res qSchema mSchema sSchema opts.
   WatchQueryClient client opts =>
-  MonadAff m =>
   GqlQuery qSchema query res =>
   (Json -> Either JsonDecodeError res) ->
   (opts -> opts) ->
@@ -49,7 +48,7 @@ useQuery decoder opts queryName query client = Hooks.do
   Hooks.pure result
 
 
--- Run a graphql query in an event handler, in the `HookM` monad
+-- | Run a graphql query in an event handler, in the `HookM` monad
 useQueryM ::
   forall client query m res mOpts qSchema mSchema sSchema opts.
   QueryClient client opts mOpts =>

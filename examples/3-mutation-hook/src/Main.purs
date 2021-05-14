@@ -45,21 +45,21 @@ main =
             , headers: []
             , url: "http://localhost:4000/graphql"
             }
-    runUI (app client) {} body
+    runUI app {client} body
   where
-  app :: forall q o. GqlClient -> H.Component q {} o Aff
-  app client =
-    Hooks.component \_ _ -> Hooks.do
+  app :: forall q o. H.Component q {client :: GqlClient} o Aff
+  app =
+    Hooks.component \_ {client} -> Hooks.do
       Hooks.pure do
         HH.div
           [ HP.style "margin:1rem" ]
-          [ HH.slot_ (Proxy :: Proxy "viewMutation") unit (viewMutation client) {}
-          , HH.slot_ (Proxy :: Proxy "viewQuery") unit (viewQuery client) {}
+          [ HH.slot_ (Proxy :: Proxy "viewMutation") unit viewMutation {client}
+          , HH.slot_ (Proxy :: Proxy "viewQuery") unit viewQuery {client}
           ]
 
-  viewQuery :: forall q o. GqlClient -> H.Component q {} o Aff
-  viewQuery client =
-    Hooks.component \_ _ -> Hooks.do
+  viewQuery :: forall q o. H.Component q {client :: GqlClient} o Aff
+  viewQuery =
+    Hooks.component \_ {client} -> Hooks.do
       res <- client # query "get_widgets" getWidgets
       Hooks.pure do
         HH.div
@@ -78,9 +78,9 @@ main =
 
   getWidgets = { widgets: { name, colour, id } }
 
-  viewMutation :: forall q o. GqlClient -> H.Component q {} o Aff
-  viewMutation client =
-    Hooks.component \_ _ -> Hooks.do
+  viewMutation :: forall q o. H.Component q {client :: GqlClient} o Aff
+  viewMutation =
+    Hooks.component \_ {client} -> Hooks.do
       widgetId /\ setWidgetId <- Hooks.useState Nothing
       colour /\ setColour <- Hooks.useState GREEN
       let

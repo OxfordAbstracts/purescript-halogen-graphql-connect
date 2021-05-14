@@ -30,11 +30,11 @@ main =
             , headers: []
             , url: "http://localhost:4000/graphql"
             }
-    runUI (app client) {} body
+    runUI app {client} body
 
-app :: forall q o. GqlClient -> Component q {} o Aff
-app client =
-  Hooks.component \_ _ -> Hooks.do
+app :: forall q o. Component q {client :: GqlClient} o Aff
+app  =
+  Hooks.component \_ {client} -> Hooks.do
     res <-
       client
         # query "get_widgets"

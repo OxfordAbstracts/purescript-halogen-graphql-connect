@@ -2,44 +2,78 @@ module Halogen.GraphQL.Hooks.Subscription (UseSubscription, useSubscription) whe
 
 import Prelude
 
-import Control.Monad.Trans.Class (lift)
 import Data.Argonaut (Json, JsonDecodeError)
 import Data.Either (Either, either)
 import Data.Maybe (Maybe(..))
 import Data.Tuple.Nested ((/\))
-import Effect.Aff.Class (class MonadAff)
-import Effect.Class (liftEffect)
-import GraphQL.Client.BaseClients.Apollo (ApolloSubClient, QueryOpts)
-import GraphQL.Client.Types (class GqlQuery, Client)
+import GraphQL.Client.Types (class GqlQuery, class SubscriptionClient, Client)
 import Halogen.GraphQL.Error (GqlFailure(..))
 import Halogen.GraphQL.GqlRemote (GqlRemote)
 import Halogen.GraphQL.HOC.Subscription (subscriptionEmitter)
 import Halogen.Hooks (type (<>), Hook, UseEffect, UseState)
 import Halogen.Hooks as Hooks
-import Halogen.Subscription as HS
 import Network.RemoteData (RemoteData(..))
 
 type UseSubscription res
   = UseState (GqlRemote res) <> UseEffect <> Hooks.Pure
 
+type GqlSubscriptionHook m res = Hook m (UseSubscription res) (GqlRemote res)
+
+-- | Listen to a graphql subscription on component initialization
 useSubscription ::
-  forall query m res qSchema mSchema sSchema.
-  MonadAff m =>
+  forall client query m res qSchema mSchema sSchema opts.
+  SubscriptionClient client opts =>
   GqlQuery sSchema query res =>
   (Json -> Either JsonDecodeError res) ->
-  (QueryOpts -> QueryOpts) ->
+  (opts -> opts) ->
   String ->
   query ->
-  Client ApolloSubClient qSchema mSchema sSchema ->
-  Hook m (UseSubscription res) (GqlRemote res)
+  Client client qSchema mSchema sSchema ->
+  GqlSubscriptionHook m res
 useSubscription decoder opts queryName query client = Hooks.do
-  result /\ resultId <- Hooks.useState Loading
+  result /\ resultId <- Hooks.useState NotAsked
   Hooks.useLifecycleEffect do
+    Hooks.put resultId Loading
     let
       emitter = subscriptionEmitter decoder opts queryName query client
-    subscription <-
-      liftEffect $ HS.subscribe emitter
-        $ \res ->
-            pure $ Hooks.put resultId $ either (Failure <<< DecodeError) pure res
-    lift $ pure $ Just $ liftEffect $ HS.unsubscribe subscription
+
+      handler res =
+        Hooks.put resultId
+          $ either (Failure <<< DecodeError) pure res
+    hookSubId <- Hooks.subscribe $ map handler emitter
+    pure $ Just $ Hooks.unsubscribe hookSubId
+  Hooks.pure result
+
+
+type UseSubscriptionFold res
+  = UseState res <> UseEffect <> Hooks.Pure
+
+type GqlSubscriptionAppendHook m res = Hook m (UseSubscriptionFold res) (GqlRemote res)
+
+-- | Listen to a graphql subscription on component initialization and append new results to an array
+useSubscriptionFold ::
+  forall client query m res qSchema mSchema sSchema opts.
+  SubscriptionClient client opts =>
+  GqlQuery sSchema query res =>
+  (Json -> Either JsonDecodeError res) ->
+  (opts -> opts) ->
+  _ ->
+  String ->
+  query ->
+  Client client qSchema mSchema sSchema ->
+  GqlSubscriptionHook m res
+useSubscriptionFold decoder opts errorHandler queryName query client = Hooks.do
+  result /\ resultId <- Hooks.useState NotAsked
+  Hooks.useLifecycleEffect do
+    Hooks.put resultId Loading
+    let
+      emitter = subscriptionEmitter decoder opts queryName query client
+
+      handler res =
+        case res of 
+          Right -> 
+        Hooks.mo resultId
+          $ either (Failure <<< DecodeError) pure res
+    hookSubId <- Hooks.subscribe $ map handler emitter
+    pure $ Just $ Hooks.unsubscribe hookSubId
   Hooks.pure result
