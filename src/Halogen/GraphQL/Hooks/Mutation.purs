@@ -32,3 +32,4 @@ useMutation decoder optsF queryNameUnsafe query (Client client) = do
   opts = optsF (defMutationOpts client)
 
   queryName = safeQueryName queryNameUnsafe
+

@@ -33,6 +33,7 @@ type GqlSubscriptionHook m res
   = GqlSubscriptionFoldHook m (GqlRemote res)
 
 -- | Listen to a graphql subscription on component initialization
+-- | Returns the data or an error if there is one
 useSubscription ::
   forall client query m res qSchema mSchema sSchema opts.
   SubscriptionClient client opts =>
@@ -50,6 +51,7 @@ useSubscription =
     (\_ res -> Success res)
 
 -- | Listen to a graphql subscription on component initialization
+-- | Returns the full graphQL result
 useSubscriptionFullRes ::
   forall client query m res qSchema mSchema sSchema opts.
   SubscriptionClient client opts =>
@@ -86,6 +88,7 @@ useSubscriptionAppend =
 
 -- | Listen to a graphql subscription on component initialization 
 -- | and add the new results to an array
+-- | Returns the full graphQL result
 useSubscriptionAppendFullRes ::
   forall client query qSchema mSchema sSchema opts res m.
   SubscriptionClient client opts =>
@@ -123,9 +126,9 @@ useSubscriptionFold ::
   GqlSubscriptionFoldHook m acc
 useSubscriptionFold = useSubscriptionFoldInternal true decodeGqlRes
 
--- -- | Listen to a graphql subscription on component initialization 
--- -- | and specify how to fold the results into an accumulator.
--- -- | Gets the full response as per Graphql Spec
+-- | Listen to a graphql subscription on component initialization 
+-- | and specify how to fold the results into an accumulator.
+-- | Returns the full graphQL result
 useSubscriptionFoldFullRes ::
   forall client query m qSchema mSchema sSchema opts acc res.
   SubscriptionClient client opts =>
