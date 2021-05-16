@@ -6,10 +6,11 @@ You can edit this file as you like.
 , dependencies =
   [ "aff"
   , "argonaut"
+  , "arrays"
+  , "bifunctors"
   , "console"
   , "effect"
   , "either"
-  , "exceptions"
   , "foldable-traversable"
   , "graphql-client"
   , "halogen"

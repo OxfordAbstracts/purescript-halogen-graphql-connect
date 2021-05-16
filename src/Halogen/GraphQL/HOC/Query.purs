@@ -1,8 +1,8 @@
 module Halogen.GraphQL.HOC.Query (queryConnect, queryConnect_, queryConnectFullRes, queryConnectFullRes_, watchQueryEmitter) where
 
 import Prelude
-
-import Data.Argonaut (Json, JsonDecodeError)
+import Data.Argonaut (Json, JsonDecodeError, decodeJson)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
@@ -27,7 +27,7 @@ type WithGql res r
 data Action input output res
   = Initialize
   | Finalize
-  | QueryUpdate (Either JsonDecodeError res)
+  | QueryUpdate (Either GqlFailure res)
   | Receive input
   | Emit output
 
@@ -48,8 +48,7 @@ queryConnect ::
   Client baseClient querySchema mutationSchema subscriptionSchema ->
   H.Component query { | (WithGql res input) } output m ->
   H.Component query { | input } output m
-queryConnect decoder = 
-  queryConnectInternal (Proxy :: _ "gql") (decodeGqlRes decoder)
+queryConnect decoder = queryConnectInternal true (Proxy :: _ "gql") (decodeGqlRes decoder)
 
 -- | Pass the result of a graphQL query to a component using a custom label
 queryConnect_ ::
@@ -59,7 +58,7 @@ queryConnect_ ::
   Row.Lacks sym input =>
   IsSymbol sym =>
   Row.Cons sym (RemoteData GqlFailure res) input withGql =>
-    QueryClient baseClient opts mOpts =>
+  QueryClient baseClient opts mOpts =>
   WatchQueryClient baseClient opts =>
   Proxy sym ->
   (Json -> Either JsonDecodeError res) ->
@@ -69,8 +68,7 @@ queryConnect_ ::
   Client baseClient querySchema mutationSchema subscriptionSchema ->
   H.Component query { | withGql } output m ->
   H.Component query { | input } output m
-queryConnect_ sym decoder = 
-  queryConnectInternal sym (decodeGqlRes decoder)
+queryConnect_ sym decoder = queryConnectInternal true sym (decodeGqlRes decoder)
 
 -- | Pass the full graphQL result of a graphQL query to a component using the "gql" label
 queryConnectFullRes ::
@@ -87,8 +85,7 @@ queryConnectFullRes ::
   Client baseClient querySchema mutationSchema subscriptionSchema ->
   H.Component query { | (WithGql (GqlRes res) input) } output m ->
   H.Component query { | input } output m
-queryConnectFullRes decoder = 
-  queryConnectInternal (Proxy :: _ "gql") (getFullRes decoder)
+queryConnectFullRes decoder = queryConnectInternal false (Proxy :: _ "gql") ((map pure <<< getFullRes) decoder)
 
 -- | Pass the full graphQL result of a graphQL query to a component using a custom label
 queryConnectFullRes_ ::
@@ -97,7 +94,7 @@ queryConnectFullRes_ ::
   GqlQuery querySchema gqlQuery res =>
   Row.Lacks sym input =>
   IsSymbol sym =>
-    QueryClient baseClient opts mOpts =>
+  QueryClient baseClient opts mOpts =>
   WatchQueryClient baseClient opts =>
   Row.Cons sym (RemoteData GqlFailure (GqlRes res)) input withGql =>
   Proxy sym ->
@@ -108,8 +105,7 @@ queryConnectFullRes_ ::
   Client baseClient querySchema mutationSchema subscriptionSchema ->
   H.Component query { | withGql } output m ->
   H.Component query { | input } output m
-queryConnectFullRes_ sym decoder = 
-  queryConnectInternal sym (getFullRes decoder)
+queryConnectFullRes_ sym decoder = queryConnectInternal false sym ((map pure <<< getFullRes) decoder)
 
 queryConnectInternal ::
   forall baseClient querySchema mutationSchema subscriptionSchema query input output m res res_ gqlQuery withGql sym opts mOpts.
@@ -120,6 +116,7 @@ queryConnectInternal ::
   Row.Cons sym (RemoteData GqlFailure res) input withGql =>
   QueryClient baseClient opts mOpts =>
   WatchQueryClient baseClient opts =>
+  Boolean ->
   Proxy sym ->
   (Json -> Either JsonDecodeError res) ->
   (opts -> opts) ->
@@ -128,7 +125,7 @@ queryConnectInternal ::
   Client baseClient querySchema mutationSchema subscriptionSchema ->
   H.Component query { | withGql } output m ->
   H.Component query { | input } output m
-queryConnectInternal sym decoder optsF queryName query client innerComponent =
+queryConnectInternal checkErrors sym decoder optsF queryName query client innerComponent =
   H.mkComponent
     { initialState:
         \pass ->
@@ -151,11 +148,12 @@ queryConnectInternal sym decoder optsF queryName query client innerComponent =
     Initialize -> do
       { pass } <- H.get
       q <- H.lift $ query $ Record.delete sym pass
-      let sub = watchQueryEmitter decoder optsF queryName q client
+      let
+        sub = watchQueryEmitter checkErrors decoder optsF queryName q client
       subId <- H.subscribe $ map QueryUpdate sub
       H.modify_ _ { subId = Just subId }
     QueryUpdate (Right res) -> H.modify_ \st -> st { pass = Record.set sym (Success res) st.pass }
-    QueryUpdate (Left err) -> H.modify_ \st -> st { pass = Record.set sym (Failure $ DecodeError err) st.pass }
+    QueryUpdate (Left err) -> H.modify_ \st -> st { pass = Record.set sym (Failure err) st.pass }
     Receive input -> do
       { pass } <- H.get
       let
@@ -175,15 +173,30 @@ watchQueryEmitter ::
   forall query baseClient opts res ss ms querySchema.
   GqlQueryString query =>
   WatchQueryClient baseClient opts =>
+  Boolean ->
   (Json -> Either JsonDecodeError res) ->
   (opts -> opts) ->
   String ->
   query ->
   Client baseClient querySchema ms ss ->
-  Emitter (Either JsonDecodeError res)
-watchQueryEmitter decoder optsF queryNameUnsafe q (Client client) = do
-  decodeGqlRes decoder <$> watchQueryEventOpts optsF client query
+  Emitter (Either GqlFailure res)
+watchQueryEmitter checkErrors decoder optsF queryNameUnsafe q (Client client) = do
+  checkErrorsAndDecode <$> watchQueryEventOpts optsF client query
   where
+
+
   queryName = safeQueryName queryNameUnsafe
 
   query = "query " <> queryName <> " " <> toGqlQueryString q
+
+  checkErrorsAndDecode :: Json -> Either GqlFailure res
+  checkErrorsAndDecode json =
+    if checkErrors then case getErrors json of
+      Just errors -> Left $ QueryError errors
+      _ -> lmap DecodeError $ decoder json
+    else
+      lmap DecodeError $ decoder json
+      
+  getErrors json = case decodeJson json of
+    Right ({ errors } :: { errors :: _ }) -> Just errors
+    _ -> Nothing

@@ -38,11 +38,11 @@ useQuery decoder opts queryName query client = Hooks.do
   Hooks.useLifecycleEffect do
     Hooks.put resultId Loading
     let
-      emitter = watchQueryEmitter decoder opts queryName query client
+      emitter = watchQueryEmitter true decoder opts queryName query client
 
       handler res =
         Hooks.put resultId
-          $ either (Failure <<< DecodeError) pure res
+          $ either Failure pure res
     hookSubId <- Hooks.subscribe $ map handler emitter
     pure $ Just $ Hooks.unsubscribe hookSubId
   Hooks.pure result
@@ -63,7 +63,6 @@ useQueryM ::
 useQueryM decoder optsF queryNameUnsafe query (Client client) = do
   json <- liftAff $ clientQuery opts client queryName $ toGqlQueryString query
   pure $ either (Failure <<< DecodeError) pure (decoder json)
-
   where 
   opts = optsF (defQueryOpts client)
 

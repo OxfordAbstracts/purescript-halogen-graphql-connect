@@ -2,7 +2,8 @@ module Halogen.GraphQL.HOC.Subscription (subConnect, subConnect_, subConnectFull
 
 import Prelude
 
-import Data.Argonaut (Json, JsonDecodeError)
+import Data.Argonaut (Json, JsonDecodeError, decodeJson)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
@@ -28,7 +29,7 @@ type WithGql res r
 data Action input output res
   = Initialize
   | Finalize
-  | QueryUpdate (Either JsonDecodeError res)
+  | QueryUpdate (Either GqlFailure res)
   | Receive input
   | Emit output
 
@@ -48,7 +49,7 @@ subConnect ::
   H.Component query { | (WithGql res input) } output m ->
   H.Component query { | input } output m
 subConnect decoder = 
-  subConnectInternal (Proxy :: _ "subGql") (decodeGqlRes decoder)
+  subConnectInternal true (Proxy :: _ "subGql") (decodeGqlRes decoder)
 
 -- | Pass the result of a graphQL query to a component using a custom label
 subConnect_ ::
@@ -67,7 +68,7 @@ subConnect_ ::
   H.Component query { | withGql } output m ->
   H.Component query { | input } output m
 subConnect_ sym decoder = 
-  subConnectInternal sym (decodeGqlRes decoder)
+  subConnectInternal true sym (decodeGqlRes decoder)
 
 -- | Pass the full graphQL result of a graphQL query to a component using the "subGql" label
 subConnectFullRes ::
@@ -83,7 +84,7 @@ subConnectFullRes ::
   H.Component query { | (WithGql (GqlRes res) input) } output m ->
   H.Component query { | input } output m
 subConnectFullRes decoder = 
-  subConnectInternal (Proxy :: _ "subGql") (getFullRes decoder)
+  subConnectInternal false (Proxy :: _ "subGql") ((map pure <<< getFullRes) decoder)
 
 -- | Pass the full graphQL result of a graphQL query to a component using a custom label
 subConnectFullRes_ ::
@@ -102,7 +103,7 @@ subConnectFullRes_ ::
   H.Component query { | withGql } output m ->
   H.Component query { | input } output m
 subConnectFullRes_ sym decoder = 
-  subConnectInternal sym (getFullRes decoder)
+  subConnectInternal false sym ((map pure <<< getFullRes) decoder)
 
 subConnectInternal ::
   forall querySchema mutationSchema subscriptionSchema query input output m res res_ gqlQuery withGql sym.
@@ -111,6 +112,7 @@ subConnectInternal ::
   Row.Lacks sym input =>
   IsSymbol sym =>
   Row.Cons sym (RemoteData GqlFailure res) input withGql =>
+  Boolean -> 
   Proxy sym ->
   (Json -> Either JsonDecodeError res) ->
   (QueryOpts -> QueryOpts) ->
@@ -119,7 +121,7 @@ subConnectInternal ::
   Client ApolloSubClient querySchema mutationSchema subscriptionSchema ->
   H.Component query { | withGql } output m ->
   H.Component query { | input } output m
-subConnectInternal sym decoder optsF queryName query client innerComponent =
+subConnectInternal checkErrors sym decoder optsF queryName query client innerComponent =
   H.mkComponent
     { initialState:
         \pass ->
@@ -143,11 +145,11 @@ subConnectInternal sym decoder optsF queryName query client innerComponent =
     Initialize -> do
       { pass } <- H.get
       q <- H.lift $ query $ Record.delete sym pass
-      let sub = subscriptionEmitter decoder optsF queryName q client
+      let sub = subscriptionEmitter checkErrors decoder optsF queryName q client
       subId <- H.subscribe $ map QueryUpdate sub
       H.modify_ _ { subId = Just subId }
     QueryUpdate (Right res) -> H.modify_ \st -> st { pass = Record.set sym (Success res) st.pass }
-    QueryUpdate (Left err) -> H.modify_ \st -> st { pass = Record.set sym (Failure $ DecodeError err) st.pass }
+    QueryUpdate (Left err) -> H.modify_ \st -> st { pass = Record.set sym (Failure err) st.pass }
     Receive input -> do
       { pass } <- H.get
       let
@@ -172,15 +174,28 @@ subscriptionEmitter ::
   forall query baseClient opts res ss ms querySchema.
   GqlQueryString query =>
   SubscriptionClient baseClient opts =>
+  Boolean -> 
   (Json -> Either JsonDecodeError res) ->
   (opts -> opts) ->
   String ->
   query ->
   Client baseClient querySchema ms ss ->
-  Emitter (Either JsonDecodeError res)
-subscriptionEmitter decoder optsF queryNameUnsafe q (Client client) = do
-  decodeGqlRes decoder <$> subscriptionEventOpts optsF client queryStr
+  Emitter (Either GqlFailure res)
+subscriptionEmitter checkErrors decoder optsF queryNameUnsafe q (Client client) = do
+  checkErrorsAndDecode <$> subscriptionEventOpts optsF client queryStr
   where
   queryName = safeQueryName queryNameUnsafe
 
   queryStr = "subscription " <> queryName <> " " <> toGqlQueryString q
+
+  checkErrorsAndDecode :: Json -> Either GqlFailure res
+  checkErrorsAndDecode json =
+    if checkErrors then case getErrors json of
+      Just errors -> Left $ QueryError errors
+      _ -> lmap DecodeError $ decoder json
+    else
+      lmap DecodeError $ decoder json
+      
+  getErrors json = case decodeJson json of
+    Right ({ errors } :: { errors :: _ }) -> Just errors
+    _ -> Nothing

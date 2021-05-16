@@ -125,7 +125,7 @@ let upstream =
       , repo =
           "https://github.com/OxfordAbstracts/purescript-graphql-client.git"
       , version =
-          "v4.0.4"
+          "v4.0.12"
       }
 
 in  upstream

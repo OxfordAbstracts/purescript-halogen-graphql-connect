@@ -3,11 +3,13 @@ module Main where
 import Prelude
 
 import Data.Argonaut (class DecodeJson, decodeJson, encodeJson, stringify)
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Tuple.Nested ((/\))
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
+import Foreign.Internal.Stringify (unsafeStringify)
 import Generated.Schema.Gql as Schema
 import GraphQL.Client.Args ((=>>))
 import GraphQL.Client.BaseClients.Apollo (ApolloSubClient, createSubscriptionClient)
@@ -15,17 +17,17 @@ import GraphQL.Client.Types (class GqlQuery, Client)
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
+import Halogen.GraphQL.Error (GqlFailure)
 import Halogen.GraphQL.GqlRemote (GqlRemote)
 import Halogen.GraphQL.Hooks.Mutation (useMutation)
-import Halogen.GraphQL.Hooks.Query (GqlQueryHook)
-import Halogen.GraphQL.Hooks.Subscription (useSubscription)
+import Halogen.GraphQL.Hooks.Subscription (GqlSubscriptionFoldHook, useSubscriptionAppend, useSubscriptionAppendFullRes)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties (InputType(..))
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks (HookM)
 import Halogen.Hooks as Hooks
 import Halogen.VDom.Driver (runUI)
-import Network.RemoteData (RemoteData(..))
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (preventDefault)
 
@@ -70,51 +72,57 @@ main =
           [ HE.onSubmit mutateNewPost ]
           [ HH.div
               [ HP.style "margin:1rem"]
-              [ HH.label [] [ HH.text "author" ]
+              [ HH.div_ [HH.label [] [ HH.text "author" ]]
               , HH.input [ HE.onValueChange (Hooks.put authorId), HP.value author ]
               ]
           , HH.div
               [ HP.style "margin:1rem"]
-              [ HH.label [] [ HH.text "comment" ]
+              [ HH.div_ [HH.label [] [ HH.text "comment" ]]
               , HH.input [ HE.onValueChange (Hooks.put commentId), HP.value comment ]
               ]
-          , HH.input [ HP.value "Add post" ]
+          , HH.div
+              [ HP.style "margin:1rem"]
+              [HH.input [ HP.type_ InputSubmit,  HP.value "Add post" ]]
           ]
 
   viewPosts :: forall q o. H.Component q { client :: GqlClient } o Aff
   viewPosts =
     Hooks.component \_ { client } -> Hooks.do
-      posts /\ postsRef <- Hooks.useRef []
       res <- client # subscription "new_post" { postAdded: { author: unit, comment: unit, id: unit } }
-      -- case res of 
-      --   Success newPost -> ?d $ Hooks.modify_ postId (_ <> [ newPost]) 
-      --   _ -> pure unit  
+      fullRes <- client # subscriptionFullRes "new_post" { postAdded: { author: unit, comment: unit, id: unit } }
+
       Hooks.pure do
         HH.div
           [ HP.style "margin-top:2rem" ]
           [ HH.div_ [ HH.text "Query result:" ]
-          , case res of
-              Success { postAdded } -> HH.div_ [ HH.text "new post:", HH.pre_ [ HH.text $ stringify $ encodeJson postAdded ] ]
-              Failure err -> HH.text $ show err
-              _ -> HH.text "Pending"
+          , HH.div_ $ res <#> \p -> case p of 
+            Left err -> HH.div_ [ HH.text "Error:", HH.pre_ [ HH.text $ show err ] ]
+            Right post ->  HH.div_ [ HH.text "New post:", HH.pre_ [ HH.text $ stringify $ encodeJson post ] ]
+
+          , HH.div_ [ HH.text "Query full result:" ]
+          , HH.div_ $ fullRes <#> \post -> 
+              HH.div_ [ HH.text "New post:", HH.pre_ [ HH.text $ unsafeStringify post ] ]
+
           ]
 
 
-subscription ::
-  forall m query res.
-  MonadAff m =>
-  DecodeJson res =>
-  GqlQuery Schema.Subscription query res =>
-  String -> query -> GqlClient -> GqlQueryHook m res
-subscription = useSubscription decodeJson identity
+  subscription ::
+    forall m query res.
+    MonadAff m =>
+    DecodeJson res =>
+    GqlQuery Schema.Subscription query res =>
+    String -> query -> GqlClient -> GqlSubscriptionFoldHook m (Array (Either GqlFailure res))
+  subscription = useSubscriptionAppend decodeJson identity
 
-mutation ::
-  forall m query res.
-  MonadAff m =>
-  DecodeJson res =>
-  GqlQuery Schema.Mutation query res =>
-  String -> query -> GqlClient -> HookM m (GqlRemote res)
-mutation = useMutation decodeJson identity
+  subscriptionFullRes = useSubscriptionAppendFullRes decodeJson identity
+
+  mutation ::
+    forall m query res.
+    MonadAff m =>
+    DecodeJson res =>
+    GqlQuery Schema.Mutation query res =>
+    String -> query -> GqlClient -> HookM m (GqlRemote res)
+  mutation = useMutation decodeJson identity
 
 -- Client type
 type GqlClient

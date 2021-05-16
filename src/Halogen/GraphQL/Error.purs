@@ -3,13 +3,13 @@ module Halogen.GraphQL.Error where
 import Prelude
 
 import Data.Argonaut (JsonDecodeError)
+import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Function (on)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
-import Effect.Exception (Error)
 
 data GqlFailure
-  = QueryError Error
+  = QueryError (NonEmptyArray String)
   | DecodeError JsonDecodeError
 
 derive instance genericGqlFailure :: Generic GqlFailure _
