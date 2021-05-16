@@ -56,8 +56,8 @@ useQuery decoder opts queryName query client = Hooks.do
     pure $ Just $ Hooks.unsubscribe hookSubId
   Hooks.pure result
 
--- | Run a graphql query on component initialization, re-emitting when local cache updates
--- | Returns full 
+-- | Run a graphql query on component initialization, re-emitting when local cache updates.
+-- | Returns the full GraphQL response
 useQueryFullRes ::
   forall client query m res qSchema mSchema sSchema opts.
   WatchQueryClient client opts =>

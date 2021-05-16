@@ -51,7 +51,7 @@ useSubscription =
     (\_ res -> Success res)
 
 -- | Listen to a graphql subscription on component initialization
--- | Returns the full graphQL result
+-- | Returns the full GraphQL response
 useSubscriptionFullRes ::
   forall client query m res qSchema mSchema sSchema opts.
   SubscriptionClient client opts =>
@@ -88,7 +88,7 @@ useSubscriptionAppend =
 
 -- | Listen to a graphql subscription on component initialization 
 -- | and add the new results to an array
--- | Returns the full graphQL result
+-- | Returns the full GraphQL response
 useSubscriptionAppendFullRes ::
   forall client query qSchema mSchema sSchema opts res m.
   SubscriptionClient client opts =>
@@ -128,7 +128,7 @@ useSubscriptionFold = useSubscriptionFoldInternal true decodeGqlRes
 
 -- | Listen to a graphql subscription on component initialization 
 -- | and specify how to fold the results into an accumulator.
--- | Returns the full graphQL result
+-- | Returns the full GraphQL response
 useSubscriptionFoldFullRes ::
   forall client query m qSchema mSchema sSchema opts acc res.
   SubscriptionClient client opts =>
