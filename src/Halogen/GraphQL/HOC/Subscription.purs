@@ -2,8 +2,7 @@ module Halogen.GraphQL.HOC.Subscription (subConnect, subConnect_, subConnectFull
 
 import Prelude
 
-import Data.Argonaut (Json, JsonDecodeError, decodeJson)
-import Data.Bifunctor (lmap)
+import Data.Argonaut (Json, JsonDecodeError)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
@@ -15,7 +14,8 @@ import GraphQL.Client.SafeQueryName (safeQueryName)
 import GraphQL.Client.ToGqlString (class GqlQueryString, toGqlQueryString)
 import GraphQL.Client.Types (class GqlQuery, class SubscriptionClient, Client(..), GqlRes, subscriptionEventOpts)
 import Halogen as H
-import Halogen.GraphQL.Error (GqlFailure(..))
+import Halogen.GraphQL.Error (GqlFailure)
+import Halogen.GraphQL.Internal.Util (checkErrorsAndDecode)
 import Halogen.HTML as HH
 import Halogen.Subscription (Emitter)
 import Network.RemoteData (RemoteData(..))
@@ -182,20 +182,8 @@ subscriptionEmitter ::
   Client baseClient querySchema ms ss ->
   Emitter (Either GqlFailure res)
 subscriptionEmitter checkErrors decoder optsF queryNameUnsafe q (Client client) = do
-  checkErrorsAndDecode <$> subscriptionEventOpts optsF client queryStr
+  checkErrorsAndDecode checkErrors decoder <$> subscriptionEventOpts optsF client queryStr
   where
   queryName = safeQueryName queryNameUnsafe
 
   queryStr = "subscription " <> queryName <> " " <> toGqlQueryString q
-
-  checkErrorsAndDecode :: Json -> Either GqlFailure res
-  checkErrorsAndDecode json =
-    if checkErrors then case getErrors json of
-      Just errors -> Left $ QueryError errors
-      _ -> lmap DecodeError $ decoder json
-    else
-      lmap DecodeError $ decoder json
-      
-  getErrors json = case decodeJson json of
-    Right ({ errors } :: { errors :: _ }) -> Just errors
-    _ -> Nothing

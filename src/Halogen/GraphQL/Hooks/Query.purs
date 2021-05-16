@@ -18,9 +18,9 @@ import GraphQL.Client.Query (decodeGqlRes, getFullRes)
 import GraphQL.Client.SafeQueryName (safeQueryName)
 import GraphQL.Client.ToGqlString (toGqlQueryString)
 import GraphQL.Client.Types (class GqlQuery, class QueryClient, class WatchQueryClient, Client(..), GqlRes, clientQuery, defQueryOpts)
-import Halogen.GraphQL.Error (GqlFailure(..))
 import Halogen.GraphQL.GqlRemote (GqlRemote)
 import Halogen.GraphQL.HOC.Query (watchQueryEmitter)
+import Halogen.GraphQL.Internal.Util (checkErrorsAndDecode)
 import Halogen.Hooks (type (<>), Hook, HookM, UseEffect, UseState)
 import Halogen.Hooks as Hooks
 import Network.RemoteData (RemoteData(..))
@@ -75,8 +75,7 @@ useQueryFullRes decoder opts queryName query client = Hooks.do
       emitter = watchQueryEmitter false ((map pure <<< getFullRes) decoder) opts queryName query client
 
       handler res =
-        Hooks.put resultId
-          $ hush res
+        Hooks.put resultId $ hush res
     hookSubId <- Hooks.subscribe $ map handler emitter
     pure $ Just $ Hooks.unsubscribe hookSubId
   Hooks.pure result
@@ -95,7 +94,7 @@ useQueryM ::
   HookM m (GqlRemote res)
 useQueryM decoder optsF queryNameUnsafe query (Client client) = do
   json <- liftAff $ clientQuery opts client queryName $ toGqlQueryString query
-  pure $ either (Failure <<< DecodeError) pure (decodeGqlRes decoder json)
+  pure $ either Failure pure (checkErrorsAndDecode true decoder json)
   where
   opts = optsF (defQueryOpts client)
 

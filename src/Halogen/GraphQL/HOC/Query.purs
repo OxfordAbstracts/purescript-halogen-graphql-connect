@@ -1,8 +1,8 @@
 module Halogen.GraphQL.HOC.Query (queryConnect, queryConnect_, queryConnectFullRes, queryConnectFullRes_, watchQueryEmitter) where
 
 import Prelude
-import Data.Argonaut (Json, JsonDecodeError, decodeJson)
-import Data.Bifunctor (lmap)
+
+import Data.Argonaut (Json, JsonDecodeError)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
@@ -13,7 +13,8 @@ import GraphQL.Client.SafeQueryName (safeQueryName)
 import GraphQL.Client.ToGqlString (class GqlQueryString, toGqlQueryString)
 import GraphQL.Client.Types (class GqlQuery, class QueryClient, class WatchQueryClient, Client(..), GqlRes, watchQueryEventOpts)
 import Halogen as H
-import Halogen.GraphQL.Error (GqlFailure(..))
+import Halogen.GraphQL.Error (GqlFailure)
+import Halogen.GraphQL.Internal.Util (checkErrorsAndDecode)
 import Halogen.HTML as HH
 import Halogen.Subscription (Emitter)
 import Network.RemoteData (RemoteData(..))
@@ -181,22 +182,8 @@ watchQueryEmitter ::
   Client baseClient querySchema ms ss ->
   Emitter (Either GqlFailure res)
 watchQueryEmitter checkErrors decoder optsF queryNameUnsafe q (Client client) = do
-  checkErrorsAndDecode <$> watchQueryEventOpts optsF client query
+  checkErrorsAndDecode checkErrors decoder <$> watchQueryEventOpts optsF client query
   where
-
-
   queryName = safeQueryName queryNameUnsafe
 
   query = "query " <> queryName <> " " <> toGqlQueryString q
-
-  checkErrorsAndDecode :: Json -> Either GqlFailure res
-  checkErrorsAndDecode json =
-    if checkErrors then case getErrors json of
-      Just errors -> Left $ QueryError errors
-      _ -> lmap DecodeError $ decoder json
-    else
-      lmap DecodeError $ decoder json
-      
-  getErrors json = case decodeJson json of
-    Right ({ errors } :: { errors :: _ }) -> Just errors
-    _ -> Nothing
