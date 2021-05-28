@@ -3,7 +3,7 @@
 Make GraphQL calls in your halogen project, using hooks or higher order components. 
 
 This library will allow you to make typesafe Graphql queries, mutations and subscriptions in your Halogen App, 
-via [Apollo.js])(www.apollographql.com) 
+via [Apollo.js](www.apollographql.com) 
 
 This library relies on a lower level purescript Graphql Client that can be used without Halogen,
  [purescript-graphql-client](www.github.com/OxfordAbstracts/puresrcipt-graphql-client)
