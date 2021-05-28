@@ -10,7 +10,7 @@ This library relies on a lower level purescript Graphql Client that can be used 
 
 ## Example 
 
-This is an example of a basic Halogen app that just makes a query using hooks to get the widgets from server wi:
+This is an example of a basic Halogen app that makes a query using hooks and displays the result:
 
 ```purs
 module Main where
