@@ -6,11 +6,11 @@ You can edit this file as you like.
 , dependencies =
   [ "aff"
   , "argonaut"
+  , "arrays"
+  , "bifunctors"
   , "console"
-  , "debug"
   , "effect"
   , "either"
-  , "exceptions"
   , "foldable-traversable"
   , "graphql-client"
   , "halogen"
@@ -21,7 +21,6 @@ You can edit this file as you like.
   , "psci-support"
   , "record"
   , "remotedata"
-  , "transformers"
   , "tuples"
   ]
 , packages = ./packages.dhall

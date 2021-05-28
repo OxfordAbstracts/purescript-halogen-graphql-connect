@@ -6,11 +6,12 @@ import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
-import GraphQL.Client.Args (type (==>), (=>>))
+import GraphQL.Client.Args (type (==>))
 import GraphQL.Client.BaseClients.Apollo (ApolloClient, createClient)
 import GraphQL.Client.Types (class GqlQuery, Client)
 import Halogen (Component, liftEffect)
 import Halogen.Aff as HA
+import Halogen.GraphQL.Error (GqlFailure)
 import Halogen.GraphQL.Hooks.Query (GqlQueryHook)
 import Halogen.GraphQL.Hooks.Query as GqlHook
 import Halogen.HTML as HH
@@ -30,21 +31,25 @@ main =
             , headers: []
             , url: "http://localhost:4000/graphql"
             }
-    runUI app {client} body
+    runUI app { client } body
 
-app :: forall q o. Component q {client :: GqlClient} o Aff
-app  =
-  Hooks.component \_ {client} -> Hooks.do
+app :: forall q o. Component q { client :: GqlClient } o Aff
+app =
+  Hooks.component \_ { client } -> Hooks.do
     res <-
       client
         # query "get_widgets"
-            { widgets: { id: 1 } =>> { name }
+            { widgets: { name }
             }
     Hooks.pure do
       HH.div_
         [ HH.div_ [ HH.text "Query result:" ]
         , case res of
-            Success { widgets } -> HH.p_ $ map (HH.text <<< _.name) widgets
+            Success { widgets } ->
+              HH.div_
+                $ widgets
+                <#> \widget ->
+                    HH.div_ [ HH.text widget.name ]
             Failure err -> HH.text $ show err
             _ -> HH.text "Loading"
         ]
@@ -54,7 +59,7 @@ query ::
   MonadAff m =>
   DecodeJson res =>
   GqlQuery Schema query res =>
-  String -> query -> GqlClient -> GqlQueryHook m res
+  String -> query -> GqlClient -> GqlQueryHook m (RemoteData GqlFailure res)
 query = GqlHook.useQuery decodeJson identity
 
 -- Client type
