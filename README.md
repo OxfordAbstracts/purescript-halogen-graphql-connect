@@ -118,11 +118,11 @@ For examples on this look at the examples directories that end with "-hook"
 ## Higher order componenets (HOC)
 
 Use higher order components if you prefer not to use hooks. These can be used to make queries or 
-subscriptions. For mutations, you can use the [purescript-graphql-client](www.github.com/OxfordAbstracts/puresrcipt-graphql-client) directly. 
+subscriptions. For mutations, you can use the [purescript-graphql-client](https://github.com/OxfordAbstracts/purescript-graphql-client) directly. 
 
 For examples on this look at the examples directories that end with "-hoc"
 
 
 ## Syntax
 
-For query syntax look at [purescript-graphql-client](www.github.com/OxfordAbstracts/puresrcipt-graphql-client) 
+For query syntax look at [purescript-graphql-client](https://github.com/OxfordAbstracts/purescript-graphql-client) 
