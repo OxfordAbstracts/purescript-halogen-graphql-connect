@@ -16,21 +16,21 @@
     "dependencies": {
         "purescript-aff": "^v6.0.0",
         "purescript-argonaut": "^v8.0.0",
-        "purescript-arrays": "^v6.0.0",
+        "purescript-arrays": "^v6.0.1",
         "purescript-bifunctors": "^v5.0.0",
         "purescript-console": "^v5.0.0",
         "purescript-effect": "^v3.0.0",
         "purescript-either": "^v5.0.0",
-        "purescript-foldable-traversable": "^v5.0.0",
+        "purescript-foldable-traversable": "^v5.0.1",
         "purescript-graphql-client": "https://github.com/OxfordAbstracts/purescript-graphql-client.git#v4.0.12",
-        "purescript-halogen": "^v6.1.0",
+        "purescript-halogen": "^v6.1.2",
         "purescript-halogen-hooks": "https://github.com/thomashoneyman/purescript-halogen-hooks.git#v0.5.0",
         "purescript-halogen-subscriptions": "https://github.com/purescript-halogen/purescript-halogen-subscriptions.git#v1.0.0",
         "purescript-maybe": "^v5.0.0",
-        "purescript-prelude": "^v5.0.0",
+        "purescript-prelude": "^v5.0.1",
         "purescript-psci-support": "^v5.0.0",
         "purescript-record": "^v3.0.0",
         "purescript-remotedata": "^v5.0.0",
-        "purescript-tuples": "^v6.0.0"
+        "purescript-tuples": "^v6.0.1"
     }
 }
