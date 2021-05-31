@@ -105,9 +105,9 @@ in  upstream
 -------------------------------
 -}
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.14.1-20210419/packages.dhall sha256:d9a082ffb5c0fabf689574f0680e901ca6f924e01acdbece5eeedd951731375a
-  with graphql-client =
-      { dependencies =
+      https://github.com/purescript/package-sets/releases/download/psc-0.14.1-20210516/packages.dhall sha256:f5e978371d4cdc4b916add9011021509c8d869f4c3f6d0d2694c0e03a85046c8
+      with graphql-client =
+        { dependencies =
           [ "foreign"
           , "foreign-generic"
           , "strings-extra"
@@ -121,10 +121,9 @@ let upstream =
           , "heterogeneous"
           , "string-parsers"
           ]
-      , repo =
-          "https://github.com/OxfordAbstracts/purescript-graphql-client.git"
-      , version =
-          "v4.0.12"
-      }
+        , repo =
+            "https://github.com/OxfordAbstracts/purescript-graphql-client.git"
+        , version = "v4.0.12"
+        }
 
 in  upstream
