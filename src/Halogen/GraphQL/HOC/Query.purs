@@ -1,7 +1,6 @@
 module Halogen.GraphQL.HOC.Query (queryConnect, queryConnect_, queryConnectFullRes, queryConnectFullRes_, watchQueryEmitter) where
 
 import Prelude
-
 import Data.Argonaut (Json, JsonDecodeError)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
@@ -12,6 +11,7 @@ import GraphQL.Client.Query (decodeGqlRes, getFullRes)
 import GraphQL.Client.SafeQueryName (safeQueryName)
 import GraphQL.Client.ToGqlString (class GqlQueryString, toGqlQueryString)
 import GraphQL.Client.Types (class GqlQuery, class QueryClient, class WatchQueryClient, Client(..), GqlRes, watchQueryEventOpts)
+import GraphQL.Client.Variables (class VarsTypeChecked, getVarsJson)
 import Halogen as H
 import Halogen.GraphQL.Error (GqlFailure)
 import Halogen.GraphQL.Internal.Util (checkErrorsAndDecode)
@@ -173,6 +173,7 @@ queryConnectInternal checkErrors sym decoder optsF queryName query client innerC
 watchQueryEmitter ::
   forall query baseClient opts res ss ms querySchema.
   GqlQueryString query =>
+  VarsTypeChecked query =>
   WatchQueryClient baseClient opts =>
   Boolean ->
   (Json -> Either JsonDecodeError res) ->
@@ -182,7 +183,7 @@ watchQueryEmitter ::
   Client baseClient querySchema ms ss ->
   Emitter (Either GqlFailure res)
 watchQueryEmitter checkErrors decoder optsF queryNameUnsafe q (Client client) = do
-  checkErrorsAndDecode checkErrors decoder <$> watchQueryEventOpts optsF client query
+  checkErrorsAndDecode checkErrors decoder <$> watchQueryEventOpts optsF client query (getVarsJson q)
   where
   queryName = safeQueryName queryNameUnsafe
 

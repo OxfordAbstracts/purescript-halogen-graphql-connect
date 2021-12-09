@@ -13,6 +13,7 @@ import GraphQL.Client.Query (decodeGqlRes, getFullRes)
 import GraphQL.Client.SafeQueryName (safeQueryName)
 import GraphQL.Client.ToGqlString (class GqlQueryString, toGqlQueryString)
 import GraphQL.Client.Types (class GqlQuery, class SubscriptionClient, Client(..), GqlRes, subscriptionEventOpts)
+import GraphQL.Client.Variables (class VarsTypeChecked, getVarsJson)
 import Halogen as H
 import Halogen.GraphQL.Error (GqlFailure)
 import Halogen.GraphQL.Internal.Util (checkErrorsAndDecode)
@@ -173,6 +174,7 @@ subConnectInternal checkErrors sym decoder optsF queryName query client innerCom
 subscriptionEmitter ::
   forall query baseClient opts res ss ms querySchema.
   GqlQueryString query =>
+  VarsTypeChecked query =>
   SubscriptionClient baseClient opts =>
   Boolean -> 
   (Json -> Either JsonDecodeError res) ->
@@ -182,7 +184,7 @@ subscriptionEmitter ::
   Client baseClient querySchema ms ss ->
   Emitter (Either GqlFailure res)
 subscriptionEmitter checkErrors decoder optsF queryNameUnsafe q (Client client) = do
-  checkErrorsAndDecode checkErrors decoder <$> subscriptionEventOpts optsF client queryStr
+  checkErrorsAndDecode checkErrors decoder <$> subscriptionEventOpts optsF client queryStr (getVarsJson q)
   where
   queryName = safeQueryName queryNameUnsafe
 

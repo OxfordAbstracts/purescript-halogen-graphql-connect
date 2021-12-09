@@ -18,6 +18,7 @@ import GraphQL.Client.Query (decodeGqlRes, getFullRes)
 import GraphQL.Client.SafeQueryName (safeQueryName)
 import GraphQL.Client.ToGqlString (toGqlQueryString)
 import GraphQL.Client.Types (class GqlQuery, class QueryClient, class WatchQueryClient, Client(..), GqlRes, clientQuery, defQueryOpts)
+import GraphQL.Client.Variables (getVarsJson)
 import Halogen.GraphQL.GqlRemote (GqlRemote)
 import Halogen.GraphQL.HOC.Query (watchQueryEmitter)
 import Halogen.GraphQL.Internal.Util (checkErrorsAndDecode)
@@ -93,7 +94,7 @@ useQueryM ::
   Client client qSchema mSchema sSchema ->
   HookM m (GqlRemote res)
 useQueryM decoder optsF queryNameUnsafe query (Client client) = do
-  json <- liftAff $ clientQuery opts client queryName $ toGqlQueryString query
+  json <- liftAff $ clientQuery opts client queryName (toGqlQueryString query) (getVarsJson query)
   pure $ either Failure pure (checkErrorsAndDecode true decoder json)
   where
   opts = optsF (defQueryOpts client)
@@ -114,7 +115,7 @@ useQueryMFullRes ::
   Client client qSchema mSchema sSchema ->
   HookM m (GqlRes res)
 useQueryMFullRes decoder optsF queryNameUnsafe query (Client client) = do
-  json <- liftAff $ clientQuery opts client queryName $ toGqlQueryString query
+  json <- liftAff $ clientQuery opts client queryName (toGqlQueryString query) (getVarsJson query)
   pure $ getFullRes decoder json
   where
   opts = optsF (defQueryOpts client)
